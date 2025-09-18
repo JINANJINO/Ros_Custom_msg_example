@@ -1,90 +1,52 @@
-# ROS Custom Message Tutorial
+# ROS 2 Custom Message Implementation Tutorial
 
-**Abstract**  
-This repository provides a complete, ready-to-publish tutorial for creating and using custom messages in ROS 2. It covers defining custom message types, configuring build files, implementing publisher/subscriber nodes in Python, and an example assignment (TwoNumSum). The document is intended to be dropped directly into a GitHub `README.md`.
+## **Introduction**
+This document provides a comprehensive guide to creating and utilizing custom message types within the ROS 2 framework. The tutorial is divided into sections covering package creation, message definition, and the implementation of publisher and subscriber nodes that use the custom message type.
 
----
-
-## Prerequisites
-
-- ROS 2 (Foxy / Galactic / Humble or later)
-- `colcon` build tools
-- Python 3.8+ (for ament_python packages)
-- Basic familiarity with ROS 2 nodes, topics, and packages
-
----
-
-## Repository structure (expected after following tutorial)
-
-```
-your_workspace/
-└── src/
-    ├── msg_interface_example/          # custom message package (ament_cmake)
-    │   ├── CMakeLists.txt
-    │   ├── package.xml
-    │   └── msg/
-    │       ├── TwoTextMessage.msg
-    │       └── TwoNumSum.msg
-    └── using_my_custom_interface_package/  # example publisher/subscriber (ament_python)
-        ├── package.xml
-        ├── setup.py
-        └── using_my_custom_interface_package/
-            ├── __init__.py
-            ├── two_text_publisher.py
-            ├── two_text_subscriber.py
-            ├── sum_publisher.py
-            └── sum_subscriber.py
-```
-
----
-
-## 0. Workspace and Package Setup
-
-1. Create a ROS 2 workspace and `src` folder:
+## Section 0: Package and Custom Message Creation
+The initial step involves the creation of a ROS 2 workspace and a source directory. Navigate to your intended workspace location to begin.
 
 ```bash
-mkdir -p ~/ros_custom_msgs_ws/src
-cd ~/ros_custom_msgs_ws/src
+cd ~/[your_workspace_name]/src
 ```
 
-2. Create the custom message package (CMake / rosidl):
+A dedicated package should be created to manage the custom message definitions. This promotes modularity and reusability. Execute the following command to create a new package.
 
 ```bash
 ros2 pkg create --build-type ament_cmake msg_interface_example
+```
+
+> ⚠️ **Note:** the specified build type is ```ament_cmake```, and the **package** is named ```msg_interface_example```.
+
+Proceed into the newly created package directory and create a subdirectory named ```msg```. This directory is the standard location for message definition files (```.msg```).
+
+
+```bash
 cd msg_interface_example
 mkdir msg
 ```
 
-3. Create message files inside `msg/`:
-- `TwoTextMessage.msg`
-- `TwoNumSum.msg`
+Within the ``msg``` directory, create a new message definition file. For this tutorial, the file will be named ```TwoTextMessage.msg```. Message file names should adhere to the CamelCase convention.
+
+The resulting directory structure should be as follows:
+```
+.
+├── CMakeLists.txt
+├── include
+│   └── msg_interface_example
+├── msg
+│   └── TwoTextMessage.msg
+├── package.xml
+└── src
+```
+
+To enable the build system to recognize and generate the custom message, modifications to ```CMakeLists.txt``` and ```package.xml``` are required.
 
 ---
 
-## 1. Message definitions
+## Section 1: ```CMakeLists.txt``` Configuration
 
-Create `msg/TwoTextMessage.msg` with:
-
-```plaintext
-# TwoTextMessage.msg
-builtin_interfaces/Time stamp
-string text_a
-string text_b
-```
-
-Create `msg/TwoNumSum.msg` with:
-
-```plaintext
-# TwoNumSum.msg
-int8 num_a
-int8 num_b
-```
-
----
-
-## 2. msg_interface_example — CMakeLists.txt
-
-Edit `msg_interface_example/CMakeLists.txt` to include message generation:
+Modify the ```CMakeLists.txt``` file to include the necessary dependencies and message generation directives.
 
 ```cmake
 cmake_minimum_required(VERSION 3.8)
@@ -94,13 +56,13 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+# Find and load build settings from external packages
 find_package(ament_cmake REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 set(msg_files
   "msg/TwoTextMessage.msg"
-  "msg/TwoNumSum.msg"
 )
 
 rosidl_generate_interfaces(${PROJECT_NAME}
@@ -111,28 +73,28 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 ament_export_dependencies(rosidl_default_runtime)
 ament_package()
 ```
+This configuration finds required packages (```ament_cmake```, ```builtin_interfaces```, ```rosidl_default_generators```), specifies the message file(s), and invokes ```rosidl_generate_interfaces``` to handle the code generation for the specified message types.
 
 ---
 
-## 3. msg_interface_example — package.xml
+## Section 2: ```package.xml``` Configuration
 
-Edit `msg_interface_example/package.xml` (minimum relevant parts):
+Next, update the ```package.xml``` file to declare the build and execution dependencies.
 
 ```xml
 <?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>msg_interface_example</name>
   <version>0.0.0</version>
-  <description>Custom message definitions for tutorial</description>
-  <maintainer email="your.email@example.com">yourname</maintainer>
-  <license>Apache-2.0</license>
+  <description>Package for custom message interfaces</description>
+  <maintainer email="user@example.com">user</maintainer>
+  <license>Apache License 2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
   <buildtool_depend>rosidl_default_generators</buildtool_depend>
-
   <exec_depend>builtin_interfaces</exec_depend>
   <exec_depend>rosidl_default_runtime</exec_depend>
-
   <member_of_group>rosidl_interface_packages</member_of_group>
 
   <test_depend>ament_lint_auto</test_depend>
@@ -144,352 +106,107 @@ Edit `msg_interface_example/package.xml` (minimum relevant parts):
 </package>
 ```
 
----
-
-## 4. Build the workspace (first build)
-
-Return to workspace root and build the `msg_interface_example` package so other packages can depend on the generated interfaces:
+After configuring both files, return to the root of the workspace and compile the packages using **```colcon```**.
 
 ```bash
-cd ~/ros_custom_msgs_ws
-colcon build --packages-select msg_interface_example
-source install/setup.bash
+colcon build
 ```
 
 ---
 
-## 5. Create using package (Python) that uses the custom messages
+## Section 3: Publisher Node Implementation
 
-From `src/`:
+Create a new package to house the nodes that will utilize the custom message.
 
 ```bash
-cd ~/ros_custom_msgs_ws/src
-ros2 pkg create using_my_custom_interface_package --build-type ament_python --dependencies rclpy msg_interface_example
+ros2 pkg create using_my_custom_interface_package --build-type ament_python --dependencies rclpy std_msgs msg_interface_example
 ```
 
-This creates an ament_python package. We'll add four example scripts and `setup.py` entry points.
+This command generates a Python-based ROS 2 package with a dependency on the previously created ```msg_interface_example``` package.
 
----
-
-## 6. using_my_custom_interface_package — package.xml
-
-Edit `using_my_custom_interface_package/package.xml` to ensure dependency on `msg_interface_example`:
-
-```xml
-<?xml version="1.0"?>
-<package format="3">
-  <name>using_my_custom_interface_package</name>
-  <version>0.0.0</version>
-  <description>Example nodes using custom messages</description>
-  <maintainer email="your.email@example.com">yourname</maintainer>
-  <license>Apache-2.0</license>
-
-  <buildtool_depend>ament_python</buildtool_depend>
-
-  <exec_depend>rclpy</exec_depend>
-  <exec_depend>msg_interface_example</exec_depend>
-  <exec_depend>rosidl_default_runtime</exec_depend>
-
-  <export>
-    <build_type>ament_python</build_type>
-  </export>
-</package>
-```
-
----
-
-## 7. using_my_custom_interface_package — setup.py
-
-Place this `setup.py` at the package root:
+Within the source directory of this new package, create a Python script for the publisher node. The script must import the custom message type.
 
 ```python
-from setuptools import setup
-
-package_name = 'using_my_custom_interface_package'
-
-setup(
-    name=package_name,
-    version='0.0.0',
-    packages=[package_name],
-    data_files=[
-        ('share/ament_index/resource_index/packages', ['resource/' + package_name]),
-        ('share/' + package_name, ['package.xml']),
-    ],
-    install_requires=['setuptools'],
-    zip_safe=True,
-    maintainer='yourname',
-    maintainer_email='your.email@example.com',
-    description='Example publisher/subscriber using custom ROS2 messages',
-    license='Apache-2.0',
-    tests_require=['pytest'],
-    entry_points={
-        'console_scripts': [
-            'two_text_publisher = using_my_custom_interface_package.two_text_publisher:main',
-            'two_text_subscriber = using_my_custom_interface_package.two_text_subscriber:main',
-            'sum_publisher = using_my_custom_interface_package.sum_publisher:main',
-            'sum_subscriber = using_my_custom_interface_package.sum_subscriber:main',
-        ],
-    },
-)
-```
-
----
-
-## 8. Node implementations (Python)
-
-Create the module folder `using_my_custom_interface_package/` and add `__init__.py` (can be empty). Then create these four scripts:
-
-### two_text_publisher.py
-
-```python
-# using_my_custom_interface_package/two_text_publisher.py
-import rclpy
-from rclpy.node import Node
-from rclpy.qos import QoSProfile
 from msg_interface_example.msg import TwoTextMessage
-
-class TwoTextPublisher(Node):
-    def __init__(self):
-        super().__init__('yourname_two_text_publisher')  # replace 'yourname'
-        self.publisher = self.create_publisher(TwoTextMessage, 'two_text', QoSProfile(depth=10))
-        self.timer = self.create_timer(1.0, self.publish_msg)
-        self.count = 0
-
-    def publish_msg(self):
-        msg = TwoTextMessage()
-        msg.stamp = self.get_clock().now().to_msg()
-        msg.text_a = f'text_a: {self.count}'
-        msg.text_b = f'text_b: {self.count * 2}'
-        self.publisher.publish(msg)
-        self.get_logger().info(f'Published: {msg.text_a} | {msg.text_b}')
-        self.count += 1
-
-def main(args=None):
-    rclpy.init(args=args)
-    node = TwoTextPublisher()
-    try:
-        rclpy.spin(node)
-    finally:
-        node.destroy_node()
-        rclpy.shutdown()
 ```
 
-### two_text_subscriber.py
+The publisher node will instantiate the message, populate its fields, and publish it to a topic.
 
 ```python
-# using_my_custom_interface_package/two_text_subscriber.py
+# Excerpt from the publisher's callback or loop
+def publish_msg(self):
+    msg = TwoTextMessage()
+    msg.stamp = self.get_clock().now().to_msg()
+    msg.text_a = 'text_a: {0}'.format(self.count)
+    msg.text_b = 'text_b: {0}'.format(self.count * 2)
+    
+    self.publisher.publish(msg)
+    self.get_logger().info('Publishing: "%s"' % msg.text_a)
+    self.get_logger().info('Publishing: "%s"' % msg.text_b)
+    self.count += 1
+```
+
+---
+
+## Section 4: Subscriber Node Implementation
+
+Similarly, the subscriber node must import the custom message type.
+
+```python
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import QoSProfile
 from msg_interface_example.msg import TwoTextMessage
-
-class TwoTextSubscriber(Node):
-    def __init__(self):
-        super().__init__('yourname_two_text_subscriber')  # replace 'yourname'
-        self.sub = self.create_subscription(TwoTextMessage, 'two_text', self.callback, QoSProfile(depth=10))
-
-    def callback(self, msg):
-        self.get_logger().info(f'Received: {msg.text_a} | {msg.text_b}')
-
-def main(args=None):
-    rclpy.init(args=args)
-    node = TwoTextSubscriber()
-    try:
-        rclpy.spin(node)
-    finally:
-        node.destroy_node()
-        rclpy.shutdown()
 ```
 
-### sum_publisher.py
+A callback function is defined to process incoming messages from the subscribed topic.
 
 ```python
-# using_my_custom_interface_package/sum_publisher.py
-import rclpy
-from rclpy.node import Node
-from msg_interface_example.msg import TwoNumSum
-import random
-
-class SumPublisher(Node):
-    def __init__(self):
-        super().__init__('yourname_publisher')  # replace 'yourname'
-        self.pub = self.create_publisher(TwoNumSum, 'numbers', 10)
-        self.timer = self.create_timer(1.0, self.publish_values)
-
-    def publish_values(self):
-        a = random.randint(-128, 127)  # int8 range
-        b = random.randint(-128, 127)
-        msg = TwoNumSum()
-        msg.num_a = int(a)
-        msg.num_b = int(b)
-        self.pub.publish(msg)
-        self.get_logger().info(f'Published num_a={a}, num_b={b}')
-
-def main(args=None):
-    rclpy.init(args=args)
-    node = SumPublisher()
-    try:
-        rclpy.spin(node)
-    finally:
-        node.destroy_node()
-        rclpy.shutdown()
-```
-
-### sum_subscriber.py
-
-```python
-# using_my_custom_interface_package/sum_subscriber.py
-import rclpy
-from rclpy.node import Node
-from msg_interface_example.msg import TwoNumSum
-
-class SumSubscriber(Node):
-    def __init__(self):
-        super().__init__('yourname_subscriber')  # replace 'yourname'
-        self.sub = self.create_subscription(TwoNumSum, 'numbers', self.callback, 10)
-
-    def callback(self, msg):
-        total = int(msg.num_a) + int(msg.num_b)
-        self.get_logger().info(f'Received: {msg.num_a} + {msg.num_b} = {total}')
-
-def main(args=None):
-    rclpy.init(args=args)
-    node = SumSubscriber()
-    try:
-        rclpy.spin(node)
-    finally:
-        node.destroy_node()
-        rclpy.shutdown()
-```
-
-> Replace `'yourname'` in node names with your actual name or desired identifier to match assignment requirements.
-
----
-
-## 9. Build complete workspace
-
-From workspace root:
-
-```bash
-cd ~/ros_custom_msgs_ws
-colcon build --symlink-install
-source install/setup.bash
-```
-
-If you add or modify message packages, rebuild `msg_interface_example` first then rebuild dependent packages.
-
----
-
-## 10. Run nodes (examples)
-
-Open separate terminals (source `install/setup.bash` in each):
-
-Run the two-text demo:
-
-```bash
-ros2 run using_my_custom_interface_package two_text_publisher
-ros2 run using_my_custom_interface_package two_text_subscriber
-```
-
-Run the assignment demo (random numbers + sum):
-
-```bash
-ros2 run using_my_custom_interface_package sum_publisher
-ros2 run using_my_custom_interface_package sum_subscriber
-```
-
-Inspect topics:
-
-```bash
-ros2 topic list
-ros2 topic echo /numbers
-ros2 topic echo /two_text
-```
-
-Visualize node/topic graph:
-
-```bash
-rqt_graph
+# Excerpt from the subscriber node
+def subscribe_topic_message(self, msg):
+    self.get_logger().info('Received: "%s"' % msg.text_a)
+    self.get_logger().info('Received: "%s"' % msg.text_b)
 ```
 
 ---
 
-## 11. Expected outputs (examples)
+## Section 5: Entry Point Configuration
 
-**Publisher terminal (sum_publisher)**
-
-```
-[INFO] [yourname_publisher]: Published num_a=12, num_b=-7
-[INFO] [yourname_publisher]: Published num_a=-120, num_b=50
-...
-```
-
-**Subscriber terminal (sum_subscriber)**
-
-```
-[INFO] [yourname_subscriber]: Received: 12 + -7 = 5
-[INFO] [yourname_subscriber]: Received: -120 + 50 = -70
-...
-```
-
-**TwoText messages**
-
-```
-[INFO] [yourname_two_text_subscriber]: Received: text_a: 0 | text_b: 0
-[INFO] [yourname_two_text_subscriber]: Received: text_a: 1 | text_b: 2
-...
-```
+Finally, configure the ```setup.py``` file in the ```using_my_custom_interface_package``` to define the entry points for the publisher and subscriber nodes, making them executable through ```ros2 run```.
 
 ---
 
-## 12. Assignment Instructions (concise)
+# Assignment 2: Practical Application
 
-- Add `TwoNumSum.msg` to `msg_interface_example/msg/`.
-- Implement `sum_publisher.py` and `sum_subscriber.py` as shown.
-- Ensure package `using_my_custom_interface_package` depends on `msg_interface_example`.
-- Use node names: `<your_name>_publisher` and `<your_name>_subscriber`.
-- Topic name: `numbers`.
+## 1. Problem Description
 
----
+**1. Message Creation:** Extend the `msg_interface_example` package by adding a new message definition named `TwoNumSum.msg` with the following fields:
 
-## 13. Example figures
+- **num_a** → `int8`
+- **num_b** → `int8`
+  
+**2. Publisher Node:** Within the ```using_my_custom_interface_package```, create a publisher node (```sum_publisher.py```). 
+This node should:
 
-**Figure 1 — ROS graph (rqt_graph)**  
-![Rqt_graph](https://github.com/user-attachments/assets/474c3ef1-5ae5-45ba-b8d5-7e5934f9d536)
+- Assign random integer values to the ```num_a``` and ```num_b``` fields.
+- Use the node name ```<your_name>_publisher```.
+- Publish to the topic named ```numbers```.
 
-**Figure 2 — Terminal output**  
-![Terminal Result](https://github.com/user-attachments/assets/92562cdf-da7b-42e9-957d-adee67eb7bfc)
+**3. Subscriber Node:**Create a subscriber node (```sum_subscriber.py```) that:
 
-(Replace images or paths with screenshots from your runs if required.)
-
----
-
-## 14. Troubleshooting
-
-- If Python entry points are not found after `colcon build`, ensure `setup.py` and package folder names match, and `install/setup.bash` is sourced.
-- If custom message types are missing in dependent packages, rebuild `msg_interface_example` first and re-source `install/setup.bash`.
-- Use `ros2 interface show msg_interface_example/TwoNumSum` to confirm generated interfaces.
-- For type range errors: `int8` values must be between -128 and 127.
+- Subscribes to the ```numbers``` topic.
+- Logs the received values of ```num_a```, ```num_b```, and their calculated sum
+- Use the node name ```<your_name>_subscriber```.
 
 ---
 
-## 15. References
+## 2. Result
 
-- ROS 2 documentation — Custom interfaces & messages  
-  https://docs.ros.org/en/foxy/Tutorials/Custom-ROS2-Interfaces.html
-- builtin_interfaces/Time reference  
-  https://docs.ros2.org/foxy/api/builtin_interfaces/msg/Time.html
+The final results are as shown below, and the files used for the assignment have been uploaded to this repository.
 
----
+## Figure1. Node Graph(RQT_GRAPH)
 
-## 16. License & Maintainer
+<img width="973" height="72" alt="rosgraph" src="https://github.com/user-attachments/assets/dd89f85a-59ea-4a8a-bfe0-0fa1f9ff61f7" />
 
-**License:** Apache-2.0 (or choose desired license)  
-**Maintainer:** Jinhan Lee — dlwlsgks3579@gmail.com
+## Figure2. Output(Terminal)
 
----
-
-**Notes:**  
-- This README is ready to be used as `README.md`.  
-- Replace placeholder names/emails with your real details.  
-- If you want, I can generate a compact `README` variation (shorter) or provide ready-to-paste `package.xml`, `CMakeLists.txt`, and Python scripts as separate files — tell me which format you prefer.
+<img width="1301" height="787" alt="Screenshot from 2025-09-18 19-11-16" src="https://github.com/user-attachments/assets/23a2ce0a-88be-470b-8816-53ee796e34b6" />
