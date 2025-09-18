@@ -26,7 +26,7 @@ cd msg_interface_example
 mkdir msg
 ```
 
-Within the ``msg``` directory, create a new message definition file. For this tutorial, the file will be named ```TwoTextMessage.msg```. Message file names should adhere to the CamelCase convention.
+Within the ```msg``` directory, create a new message definition file. For this tutorial, the file will be named ```TwoTextMessage.msg```. Message file names should adhere to the CamelCase convention.
 
 The resulting directory structure should be as follows:
 ```
